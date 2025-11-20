@@ -27,6 +27,11 @@ This library is built to work with a backend that returns data in the shape:
 
 which matches the JSON produced by the sibling Laravel package (https://packagist.org/packages/augmentmy/laravel-query-pagination). 
 
+If you use that package, you may add it to laravel via 
+```bash 
+composer require augmentmy/laravel-query-pagination
+```
+
 You get:
 
 - `usePagination` — a hook that talks to the Laravel API and manages page/search/sort/filter.
