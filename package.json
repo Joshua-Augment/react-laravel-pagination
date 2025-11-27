@@ -1,6 +1,6 @@
 {
   "name": "@augmentmy/react-laravel-pagination",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "React hooks and table components for Laravel-style paginated APIs",
   "license": "MIT",
   "main": "dist/index.cjs",
