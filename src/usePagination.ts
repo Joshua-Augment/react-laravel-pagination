@@ -1,6 +1,6 @@
 // src/usePagination.ts
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios, { AxiosInstance } from "axios";
 import {
   FiltersRecord,
@@ -23,10 +23,7 @@ type DefaultFetcherConfig = {
 
 export function createAxiosFetcher<TData>(
   config: DefaultFetcherConfig = {}
-): (
-  url: string,
-  params: Record<string, unknown>
-) => Promise<LaravelPaginatedResponse<TData>> {
+): (url: string, params: Record<string, unknown>) => Promise<LaravelPaginatedResponse<TData>> {
   const client = config.axiosInstance ?? axios;
 
   return async (url, params) => {
@@ -42,10 +39,7 @@ export function createAxiosFetcher<TData>(
 
 const defaultFetcher = createAxiosFetcher<any>();
 
-export function usePagination<
-  TData,
-  TFilters extends FiltersRecord = FiltersRecord
->(
+export function usePagination<TData, TFilters extends FiltersRecord = FiltersRecord>(
   options: UsePaginationOptions<TData, TFilters>
 ): UsePaginationResult<TData, TFilters> {
   const {
@@ -61,6 +55,14 @@ export function usePagination<
     fetcher = defaultFetcher,
   } = options;
 
+  const fetcherRef = useRef(fetcher);
+
+  // keep ref in sync if fetcher prop ever changes
+  useEffect(() => {
+    fetcherRef.current = fetcher;
+  }, [fetcher]);
+
+  const [staticParamsState] = useState(staticParams);
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [sortBy, setSortBy] = useState<string | undefined>(initialSortBy);
@@ -75,10 +77,7 @@ export function usePagination<
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const url = useMemo(
-    () => buildUrl(baseUrl, endpoint),
-    [baseUrl, endpoint]
-  );
+  const url = useMemo(() => buildUrl(baseUrl, endpoint), [baseUrl, endpoint]);
 
   const params = useMemo(
     () => ({
@@ -90,18 +89,18 @@ export function usePagination<
       ...staticParams,
       filters,
     }),
-    [page, pageSize, sortBy, sortDir, search, staticParams, filters]
+    [page, pageSize, sortBy, sortDir, search, staticParamsState, filters]
   );
 
   useEffect(() => {
     let cancelled = false;
 
-    const load = async ()  => {
+    const load = async () => {
       setIsLoading(true);
       setError(null);
 
       try {
-        const res = await fetcher(url, params);
+        const res = await fetcherRef.current(url, params);
         if (cancelled) return;
 
         setData(res.data);
@@ -114,20 +113,18 @@ export function usePagination<
           setIsLoading(false);
         }
       }
-    }
+    };
 
     load();
 
     return () => {
       cancelled = true;
     };
-  }, [url, fetcher, params]);
+  }, [url, params]);
 
   const setFilters = (update: TFilters | ((prev: TFilters) => TFilters)) => {
     setPage(1);
-    setFiltersState((prev) =>
-      typeof update === "function" ? (update as any)(prev) : update
-    );
+    setFiltersState((prev) => (typeof update === "function" ? (update as any)(prev) : update));
   };
 
   const nextPage = () => {
